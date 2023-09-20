@@ -31,14 +31,22 @@ syntax_tree_node *node(const char *node_name, int children_num, ...);
 /* TODO: Complete this definition.
    Hint: See pass_node(), node(), and syntax_tree.h.
          Use forward declaring. */
-%union {}
+%union {
+    struct syntax_tree_node *node;
+}
 
 /* TODO: Your tokens here. */
 %token <node> ERROR
-%token <node> ADD
+%token <node> ID INTEGER FLOATPOINT  
+%token <node> IF WHILE RETURN ELSE INT FLOAT VOID
+%token <node> LP RP LB RB LC RC COMMA SEM
+%token <node> EQLESS LESS MORE EQMORE EQ NEEQ ADD MINUS MUL DIV ASS
+%type <node> tpye-specifier relop addop mulop
+%type <node> declaration-list declaration var-declaration fun-declaration local-declaration
+%type <node> compond-stmt statement-list statement expression-stmt iteration-stmt selection-stmt return-stmt
+%type <node> expression simple-scpression var additive-expression term factor integer float call
+%type <node> params param-list param args arg_list
 %type <node> program
-
-%start program
 
 %%
 /* TODO: Your rules here. */
