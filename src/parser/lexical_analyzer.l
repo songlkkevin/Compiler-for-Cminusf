@@ -26,7 +26,7 @@ void pass_node(char *text){
 [/][*][^*]*[*]+([^*/][^*]*[*]+)*[/] {pos_start = pos_end; pos_end += strlen(yytext);}
 
 "+" 	{pos_start = pos_end; pos_end += 1; pass_node(yytext); return ADD;}
-"-"   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return MINUS;}
+"-"   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return SUB;}
 "*"  {pos_start = pos_end; pos_end += 1; pass_node(yytext); return MUL;}
 "/"   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return DIV;}
 "="   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return ASS;}
@@ -45,7 +45,7 @@ void pass_node(char *text){
 "{"   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return LC;}
 "}"   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return RC;}
 ","   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return COMMA;}
-";"   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return SEM;}
+";"   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return SEMI;}
 " " {pos_start = pos_end; pos_end += 1;}
 \n {pos_start = pos_end; pos_end += 1;lines++;}
 \t {pos_start = pos_end; pos_end += 1;}

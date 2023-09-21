@@ -5,7 +5,7 @@
 #include <stdarg.h>
 
 #include "syntax_tree.h"
-
+int yydebug = 1;
 // external functions from lex
 extern int yylex();
 extern int yyparse();
@@ -39,13 +39,13 @@ syntax_tree_node *node(const char *node_name, int children_num, ...);
 %token <node> ERROR
 %token <node> ID INTEGER FLOATPOINT  
 %token <node> IF WHILE RETURN ELSE INT FLOAT VOID
-%token <node> LP RP LB RB LC RC COMMA SEM
-%token <node> EQLESS LESS MORE EQMORE EQ NEEQ ADD MINUS MUL DIV ASS
-%type <node> tpye-specifier relop addop mulop
-%type <node> declaration-list declaration var-declaration fun-declaration local-declaration
-%type <node> compond-stmt statement-list statement expression-stmt iteration-stmt selection-stmt return-stmt
-%type <node> expression simple-scpression var additive-expression term factor integer float call
-%type <node> params param-list param args arg_list
+%token <node> LP RP LB RB LC RC COMMA SEMI
+%token <node> EQLESS LESS MORE EQMORE EQ NEEQ ADD SUB MUL DIV ASS
+%type <node> type-specifier relop addop mulop
+%type <node> declaration-list declaration var-declaration fun-declaration local-declarations
+%type <node> compound-stmt statement-list statement expression-stmt iteration-stmt selection-stmt return-stmt
+%type <node> expression simple-expression var additive-expression term factor integar float call
+%type <node> params param-list param args arg-list
 %type <node> program
 
 %%
@@ -56,7 +56,72 @@ program: declaration-list {$$ = node( "program", 1, $1); gt->root = $$;}
        ;
 */
 
-program : ;
+program : declaration-list {$$ = node("program", 1, $1); gt->root = $$;} ;
+declaration-list : declaration-list declaration {$$ = node("declaration-list", 2, $1, $2);}
+| declaration {$$ = node("declaration-list", 1, $1);};
+declaration : var-declaration {$$ = node("declaration", 1, $1);}
+| fun-declaration {$$ = node("declaration", 1, $1);};
+var-declaration : type-specifier ID SEMI {$$ = node("var-declaration", 3, $1, $2, $3);}
+| type-specifier ID LB INTEGER RB SEMI {$$ = node("var-declaration", 6, $1, $2, $3, $4, $5, $6);};
+type-specifier : INT {$$ = node("type-specifier", 1, $1);}
+| FLOAT {$$ = node("type-specifier", 1, $1);}
+| VOID {$$ = node("type-specifier", 1, $1);};
+fun-declaration : type-specifier ID LP params RP compound-stmt {$$ = node("fun-declaration", 6, $1, $2, $3, $4, $5, $6);};
+params : param-list {$$ = node("params", 1, $1);}
+| VOID {$$ = node("params", 1, $1);};
+param-list : param-list COMMA param {$$ = node("param-list", 3, $1, $2, $3);}
+| param {$$ = node("param-list", 1, $1);};
+param : type-specifier ID {$$ = node("param", 2, $1, $2);}
+| type-specifier ID LB RB {$$ = node("param", 4, $1, $2, $3, $4);};
+compound-stmt : LC local-declarations statement-list RC {$$ = node("compound-stmt", 4, $1, $2, $3, $4);};
+local-declarations : local-declarations var-declaration {$$ = node("local-declarations", 2, $1, $2);}
+| {$$ = node("local-declarations", 0);};
+statement-list : statement-list statement {$$ = node("statement-list", 2, $1, $2);}
+| {$$ = node("statement-list", 0);};
+statement : expression-stmt {$$ = node("statement", 1, $1);}
+| compound-stmt {$$ = node("statement", 1, $1);}
+| selection-stmt {$$ = node("statement", 1, $1);}
+| iteration-stmt {$$ = node("statement", 1, $1);}
+| return-stmt {$$ = node("statement", 1, $1);};
+expression-stmt : expression SEMI {$$ = node("expression-stmt", 2, $1, $2);}
+| SEMI {$$ = node("expression-stmt", 1, $1);};
+selection-stmt : IF LP expression RP statement {$$ = node("selection-stmt", 5, $1, $2, $3, $4, $5);}
+| IF LP expression RP statement ELSE statement {$$ = node("selection-stmt", 7, $1, $2, $3, $4, $5, $6, $7);};
+iteration-stmt : WHILE LP expression RP statement {$$ = node("iteration-stmt", 5, $1, $2, $3, $4, $5);};
+return-stmt : RETURN expression SEMI {$$ = node("return-stmt", 3, $1, $2, $3);}
+| RETURN SEMI {$$ = node("return-stmt", 2, $1, $2);};
+expression : var ASS expression {$$ = node("expression", 3, $1, $2, $3);}
+| simple-expression {$$ = node("expression", 1, $1);};
+var : ID {$$ = node("var", 1, $1);}
+| ID LB expression RB {$$ = node("var", 4, $1, $2, $3, $4);};
+simple-expression : additive-expression relop additive-expression {$$ = node("simple-expression", 3, $1, $2, $3);}
+| additive-expression {$$ = node("simple-expression", 1, $1);};
+relop : EQLESS {$$ = node("relop", 1, $1);}
+| LESS {$$ = node("relop", 1, $1);}
+| MORE {$$ = node("relop", 1, $1);}
+| EQMORE {$$ = node("relop", 1, $1);}
+| EQ {$$ = node("relop", 1, $1);}
+| NEEQ {$$ = node("relop", 1, $1);};
+additive-expression : additive-expression addop term {$$ = node("additive-expression", 3, $1, $2, $3);}
+| term {$$ = node("additive-expression", 1, $1);};
+addop : ADD {$$ = node("addop", 1, $1);}
+| SUB {$$ = node("addop", 1, $1);};
+term : term mulop factor {$$ = node("term", 3, $1, $2, $3);}
+| factor {$$ = node("term", 1, $1);};
+mulop : MUL {$$ = node("mulop", 1, $1);}
+| DIV {$$ = node("mulop", 1, $1);};
+factor : LP expression RP {$$ = node("factor", 3, $1, $2, $3);}
+| var {$$ = node("factor", 1, $1);}
+| call {$$ = node("factor", 1, $1);}
+| integar {$$ = node("factor", 1, $1);}
+| float {$$ = node("factor", 1, $1);};
+integar : INTEGER {$$ = node("integar", 1, $1);};
+float : FLOATPOINT {$$ = node("float", 1, $1);};
+call : ID LP args RP {$$ = node("call", 4, $1, $2, $3, $4);};
+args : arg-list {$$ = node("args", 1, $1);}
+| {$$ = node("args", 0);};
+arg-list : arg-list COMMA expression {$$ = node("arg-list", 3, $1, $2, $3);}
+| expression {$$ = node("arg-list", 1, $1);};
 
 %%
 
