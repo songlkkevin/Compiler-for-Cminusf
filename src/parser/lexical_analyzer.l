@@ -35,7 +35,7 @@ void pass_node(char *text){
 "<"   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return LESS;}
 ">"   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return MORE;}
 ">="   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return EQMORE;}
-"="   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return EQ;}
+"=="   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return EQ;}
 "!="   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return NEEQ;}
 
 "("   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return LP;}
@@ -47,7 +47,7 @@ void pass_node(char *text){
 ","   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return COMMA;}
 ";"   {pos_start = pos_end; pos_end += 1; pass_node(yytext); return SEMI;}
 " " {pos_start = pos_end; pos_end += 1;}
-\n {pos_start = pos_end; pos_end += 1;lines++;}
+\n {pos_end = 1; pos_start = pos_end; pos_end += 1;lines++;}
 \t {pos_start = pos_end; pos_end += 1;}
 \r {pos_start = pos_end; pos_end += 1;}
 

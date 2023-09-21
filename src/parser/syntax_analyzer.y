@@ -44,7 +44,7 @@ syntax_tree_node *node(const char *node_name, int children_num, ...);
 %type <node> type-specifier relop addop mulop
 %type <node> declaration-list declaration var-declaration fun-declaration local-declarations
 %type <node> compound-stmt statement-list statement expression-stmt iteration-stmt selection-stmt return-stmt
-%type <node> expression simple-expression var additive-expression term factor integar float call
+%type <node> expression simple-expression var additive-expression term factor integer float call
 %type <node> params param-list param args arg-list
 %type <node> program
 
@@ -113,9 +113,9 @@ mulop : MUL {$$ = node("mulop", 1, $1);}
 factor : LP expression RP {$$ = node("factor", 3, $1, $2, $3);}
 | var {$$ = node("factor", 1, $1);}
 | call {$$ = node("factor", 1, $1);}
-| integar {$$ = node("factor", 1, $1);}
+| integer {$$ = node("factor", 1, $1);}
 | float {$$ = node("factor", 1, $1);};
-integar : INTEGER {$$ = node("integar", 1, $1);};
+integer : INTEGER {$$ = node("integer", 1, $1);};
 float : FLOATPOINT {$$ = node("float", 1, $1);};
 call : ID LP args RP {$$ = node("call", 4, $1, $2, $3, $4);};
 args : arg-list {$$ = node("args", 1, $1);}
