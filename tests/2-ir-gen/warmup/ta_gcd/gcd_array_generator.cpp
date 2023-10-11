@@ -46,7 +46,7 @@ int main() {
     auto retAlloca = builder->create_alloca(Int32Type);
     // 使用辅助类实例化 builder 创建了一条 alloca 指令，在栈上分配参数 u 的空间
     auto uAlloca = builder->create_alloca(Int32Type);
-    // 使用辅助类实例化 builder 创建了一条 alloca 指令，在栈上分配参数 u 的空间
+    // 使用辅助类实例化 builder 创建了一条 alloca 指令，在栈上分配参数 v 的空间
     auto vAlloca = builder->create_alloca(Int32Type);
     // 获取 gcd 函数的形参，通过 Function 中的 iterator
     std::vector<Value *> args;
