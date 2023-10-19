@@ -262,26 +262,6 @@ Value* CminusfBuilder::visit(ASTIterationStmt &node) {
     return nullptr;
 }
 
-Value* CminusfBuilder::visit(ASTReturnStmt &node) {
-    if (node.expression == nullptr) {
-        builder->create_void_ret();
-        return nullptr;
-    } 
-    // TODO: The given code is incomplete. DONE
-    // You need to solve other return cases (e.g. return an integer).
-    auto ret_val = node.expression->accept(*this);
-    auto ret_type = context.func->get_return_type();
-    if(ret_val->get_type() != ret_type)
-    {
-        if(ret_type->is_integer_type())
-            ret_val = builder->create_fptosi(ret_val, INT32_T);
-        if(ret_type->is_float_type())
-            ret_val = builder->create_sitofp(ret_val, FLOAT_T);
-    }
-    builder->create_ret(ret_val);
-    return nullptr;
-}
-
 Value* CminusfBuilder::visit(ASTVar &node) {
     // TODO: This function is empty now.DONE
     // Add some code here.
@@ -296,7 +276,10 @@ Value* CminusfBuilder::visit(ASTVar &node) {
         }
         else 
         {
-            VarValue = builder->create_load(VarValue);
+            if(VarValue->get_type()->get_pointer_element_type()->is_integer_type() || VarValue->get_type()->get_pointer_element_type()->is_float_type() || VarValue->get_type()->get_pointer_element_type()->is_pointer_type())
+                VarValue = builder->create_load(VarValue);
+            else
+                VarValue = builder->create_gep(VarValue, {CONST_INT(0), CONST_INT(0)});
             return VarValue;
         }
     }
@@ -325,7 +308,22 @@ Value* CminusfBuilder::visit(ASTVar &node) {
 
         builder->set_insert_point(not_neg);
         Value* gep;
-        gep = builder->create_gep(VarValue, {CONST_INT(0), expr});
+        if(VarValue->get_type()->get_pointer_element_type()->is_integer_type() || VarValue->get_type()->get_pointer_element_type()->is_float_type())
+        {
+            gep = builder->create_gep(VarValue, {expr});
+        }
+        else
+        {
+            if(VarValue->get_type()->get_pointer_element_type()->is_pointer_type())
+            {
+                gep = builder->create_load(VarValue);
+                gep = builder->create_gep(gep, {expr});
+            }
+            else
+            {
+                gep = builder->create_gep(VarValue, {CONST_INT(0), expr});
+            }
+        }
         if(IsLeftValue)
         {
             return gep;
@@ -336,6 +334,26 @@ Value* CminusfBuilder::visit(ASTVar &node) {
             return VarValue;
         }
     }
+    return nullptr;
+}
+
+Value* CminusfBuilder::visit(ASTReturnStmt &node) {
+    if (node.expression == nullptr) {
+        builder->create_void_ret();
+        return nullptr;
+    } 
+    // TODO: The given code is incomplete. DONE
+    // You need to solve other return cases (e.g. return an integer).
+    auto ret_val = node.expression->accept(*this);
+    auto ret_type = context.func->get_return_type();
+    if(ret_val->get_type() != ret_type)
+    {
+        if(ret_type->is_integer_type())
+            ret_val = builder->create_fptosi(ret_val, INT32_T);
+        if(ret_type->is_float_type())
+            ret_val = builder->create_sitofp(ret_val, FLOAT_T);
+    }
+    builder->create_ret(ret_val);
     return nullptr;
 }
 
@@ -441,6 +459,28 @@ Value* CminusfBuilder::visit(ASTAdditiveExpression &node) {
     return Result;
 }
 
+Value* CminusfBuilder::visit(ASTCall &node) {
+    // TODO: This function is empty now.DONE
+    // Add some code here.
+    auto CallFunc = static_cast<Function *>(scope.find(node.id));
+    std::vector<Value *> args;
+    auto func_type = static_cast<FunctionType *>(CallFunc->get_type());
+    for (int i = 0; i < node.args.size(); i++)
+    {
+        auto ArgValue = node.args[i]->accept(*this);
+        if(func_type->get_param_type(i) != ArgValue->get_type() && !func_type->get_param_type(i)->is_pointer_type())
+        {
+            if(ArgValue->get_type()->is_float_type())
+                ArgValue = builder->create_fptosi(ArgValue, INT32_T);
+            else
+                ArgValue = builder->create_sitofp(ArgValue, FLOAT_T);
+        }
+        args.push_back(ArgValue);
+    }
+    auto CallValue = builder->create_call(CallFunc, args);
+    return CallValue;
+}
+
 Value* CminusfBuilder::visit(ASTTerm &node) {
     // TODO: This function is empty now. DONE
     // Add some code here.
@@ -476,26 +516,4 @@ Value* CminusfBuilder::visit(ASTTerm &node) {
         }
     }
     return Result;
-}
-
-Value* CminusfBuilder::visit(ASTCall &node) {
-    // TODO: This function is empty now.DONE
-    // Add some code here.
-    auto CallFunc = static_cast<Function *>(scope.find(node.id));
-    std::vector<Value *> args;
-    auto func_type = static_cast<FunctionType *>(CallFunc->get_type());
-    for (int i = 0; i < node.args.size(); i++)
-    {
-        auto ArgValue = node.args[i]->accept(*this);
-        if(func_type->get_param_type(i) != ArgValue->get_type() && !func_type->get_param_type(i)->is_pointer_type())
-        {
-            if(ArgValue->get_type()->is_float_type())
-                ArgValue = builder->create_fptosi(ArgValue, INT32_T);
-            else
-                ArgValue = builder->create_sitofp(ArgValue, FLOAT_T);
-        }
-        args.push_back(ArgValue);
-    }
-    auto CallValue = builder->create_call(CallFunc, args);
-    return CallValue;
 }
