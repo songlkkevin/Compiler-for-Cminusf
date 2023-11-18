@@ -1,6 +1,12 @@
 #include "CodeGen.hpp"
 
 #include "CodeGenUtil.hpp"
+#include "Register.hpp"
+#include "logging.hpp"
+#include <string>
+// #include "syntax_analyzer.h"
+// #include <cstdint>
+// #include <string>
 
 void CodeGen::allocate() {
     // 备份 $ra $fp
@@ -19,7 +25,7 @@ void CodeGen::allocate() {
             // 每个非 void 的定值都分配栈空间
             if (not instr.is_void()) {
                 auto size = instr.get_type()->get_size();
-                offset = ALIGN(offset + size, size);
+                offset = offset + size;
                 context.offset_map[&instr] = -static_cast<int>(offset);
             }
             // alloca 的副作用：分配额外空间
@@ -190,20 +196,55 @@ void CodeGen::gen_prologue() {
 }
 
 void CodeGen::gen_epilogue() {
-    // TODO 根据你的理解设定函数的 epilogue
-    throw not_implemented_error{__FUNCTION__};
+    // TODO: 根据你的理解设定函数的 epilogue
+    append_inst(context.func->get_name() + "epilogue", ASMInstruction::Label);
+    if (IS_IMM_12(static_cast<int>(context.frame_size))) {
+        append_inst("addi.d $sp, $sp, " +
+                    std::to_string(static_cast<int>(context.frame_size)));
+        append_inst("ld.d $ra, $sp, -8");
+        append_inst("ld.d $fp, $sp, -16");
+        append_inst("jr $ra");
+    } else {
+        load_large_int64(context.frame_size, Reg::t(0));
+        append_inst("add.d $sp, $sp, $t0");
+        append_inst("ld.d $ra, $sp, -8");
+        append_inst("ld.d $fp, $sp, -16");
+        append_inst("jr $ra");
+    }
+    // throw not_implemented_error{__FUNCTION__};
 }
 
 void CodeGen::gen_ret() {
-    // TODO 函数返回，思考如何处理返回值、寄存器备份，如何返回调用者地址
-    throw not_implemented_error{__FUNCTION__};
+    // TODO: 函数返回，思考如何处理返回值、寄存器备份，如何返回调用者地址
+    auto *type = context.func->get_return_type();
+    if(type->is_void_type())
+    {
+        append_inst(ADDI WORD, 
+                    {"$a0, $zero", "0"});
+    }
+    else if(type->is_float_type())
+    {
+        load_to_freg(context.inst->get_operand(0), FReg::fa(0));
+    }
+    else {
+        load_to_greg(context.inst->get_operand(0), Reg::a(0));
+    }
+    append_inst("b " + context.func->get_name() + "epilogue");
+    // throw not_implemented_error{__FUNCTION__};
 }
 
 void CodeGen::gen_br() {
     auto *branchInst = static_cast<BranchInst *>(context.inst);
     if (branchInst->is_cond_br()) {
-        // TODO 补全条件跳转的情况
-        throw not_implemented_error{__FUNCTION__};
+        // TODO: 补全条件跳转的情况
+        load_to_greg(branchInst->get_operand(0), Reg::t(0));
+        auto *truebranchbb = static_cast<BasicBlock *>(branchInst->get_operand(1));
+        auto *falsebranchbb = static_cast<BasicBlock *>(branchInst->get_operand(2));
+        append_inst("bne", 
+                    {"$t0", "$zero", label_name(truebranchbb)});            
+        append_inst("beq", 
+                    {"$zero", "$zero", label_name(falsebranchbb)});
+        // throw not_implemented_error{__FUNCTION__};
     } else {
         auto *branchbb = static_cast<BasicBlock *>(branchInst->get_operand(0));
         append_inst("b " + label_name(branchbb));
@@ -236,16 +277,43 @@ void CodeGen::gen_binary() {
 }
 
 void CodeGen::gen_float_binary() {
-    // TODO 浮点类型的二元指令
-    throw not_implemented_error{__FUNCTION__};
+    // TODO: 浮点类型的二元指令
+    load_to_freg(context.inst->get_operand(0), FReg::ft(0));
+    load_to_freg(context.inst->get_operand(1), FReg::ft(1));
+    // 根据指令类型生成汇编
+    switch (context.inst->get_instr_type()) {
+    case Instruction::fadd:
+        output.emplace_back("fadd.s $ft2, $ft0, $ft1");
+        break;
+    case Instruction::fsub:
+        output.emplace_back("fsub.s $ft2, $ft0, $ft1");
+        break;
+    case Instruction::fmul:
+        output.emplace_back("fmul.s $ft2, $ft0, $ft1");
+        break;
+    case Instruction::fdiv:
+        output.emplace_back("fdiv.s $ft2, $ft0, $ft1");
+        break;
+    default:
+        assert(false);
+    }
+    // 将结果填入栈帧中
+    store_from_freg(context.inst, FReg::ft(2));
+    // throw not_implemented_error{__FUNCTION__};
 }
 
 void CodeGen::gen_alloca() {
     /* 我们已经为 alloca 的内容分配空间，在此我们还需保存 alloca
      * 指令自身产生的定值，即指向 alloca 空间起始地址的指针
      */
-    // TODO 将 alloca 出空间的起始地址保存在栈帧上
-    throw not_implemented_error{__FUNCTION__};
+    // TODO: 将 alloca 出空间的起始地址保存在栈帧上
+    auto *alloca_ptr = static_cast<AllocaInst*>(context.inst);
+    int64_t offset = context.offset_map.at(context.inst);
+    offset -= alloca_ptr->get_alloca_type()->get_size();
+    load_large_int64(offset, Reg::t(0));
+    append_inst("add.d $t0, $fp, $t0");
+    store_from_greg(context.inst, Reg::t(0));
+    // throw not_implemented_error{__FUNCTION__};
 }
 
 void CodeGen::gen_load() {
@@ -257,49 +325,230 @@ void CodeGen::gen_load() {
         append_inst("fld.s $ft0, $t0, 0");
         store_from_freg(context.inst, FReg::ft(0));
     } else {
-        // TODO load 整数类型的数据
-        throw not_implemented_error{__FUNCTION__};
+        // TODO: load 整数类型的数据
+        if(type->is_int1_type())
+        {
+            append_inst(LOAD BYTE,
+                        {"$t0", "$t0", "0"});
+        }
+        else if(type->is_int32_type())
+        {
+            append_inst(LOAD WORD,
+                        {"$t0", "$t0", "0"});
+        }
+        else {
+            append_inst(LOAD DOUBLE, 
+                        {"$t0", "$t0", "0"});
+        }
+        store_from_greg(context.inst, Reg::t(0));
+        // throw not_implemented_error{__FUNCTION__};
     }
 }
 
 void CodeGen::gen_store() {
-    // TODO 翻译 store 指令
-    throw not_implemented_error{__FUNCTION__};
+    // TODO: 翻译 store 指令
+    auto *ptr = context.inst->get_operand(1);
+    auto *type = context.inst->get_operand(0)->get_type();
+    load_to_greg(ptr, Reg::t(1));
+
+    if (type->is_float_type()) {
+        load_to_freg(context.inst->get_operand(0), FReg::ft(0));
+        append_inst(FSTORE SINGLE, 
+                    {FReg::ft(0).print(), "$t1", "0"});
+    } else {
+        load_to_greg(context.inst->get_operand(0), Reg::t(0));
+        if(type->is_int1_type()) {
+            append_inst(STORE BYTE, 
+                        {"$t0", "$t1", "0"});
+        }
+        else if(type->is_int32_type()) {
+            append_inst(STORE WORD, 
+                        {"$t0", "$t1", "0"});
+        } 
+        else {
+            append_inst(STORE DOUBLE,
+                        {"$t0", "$t1", "0"});
+        }
+    }
+    // throw not_implemented_error{__FUNCTION__};
 }
 
 void CodeGen::gen_icmp() {
-    // TODO 处理各种整数比较的情况
-    throw not_implemented_error{__FUNCTION__};
+    // TODO: 处理各种整数比较的情况
+    std::string true_label = "." + context.func->get_name() + "_" + context.inst->get_name() + "true";
+    std::string finish_label = "." + context.func->get_name() + "_" + context.inst->get_name() + "finish";
+    load_to_greg(context.inst->get_operand(0), Reg::t(0));
+    load_to_greg(context.inst->get_operand(1), Reg::t(1));
+    switch (context.inst->get_instr_type()) {
+        case Instruction::ge:
+            append_inst("bge", 
+                        {"$t0", "$t1", true_label});
+            break;
+        case Instruction::gt:
+            append_inst("blt", 
+                        {"$t1", "$t0", true_label});
+            break;
+        case Instruction::le:
+            append_inst("bge", 
+                        {"$t1", "$t0", true_label});
+            break;
+        case Instruction::lt:
+            append_inst("blt", 
+                        {"$t0", "$t1", true_label});
+            break;
+        case Instruction::eq:
+            append_inst("beq",
+                        {"$t0", "$t1", true_label});
+            break;
+        case Instruction::ne:
+            append_inst("bne",
+                        {"$t0", "$t1", true_label});
+        default:
+            break;
+    }
+
+    append_inst("addi.d $t0, $zero, 0");
+    append_inst("b " + finish_label);
+
+    append_inst(true_label, ASMInstruction::Label);
+    append_inst("addi.d $t0, $zero, 1");
+
+    append_inst(finish_label, ASMInstruction::Label);
+    store_from_greg(context.inst, Reg::t(0));
+    // throw not_implemented_error{__FUNCTION__};
 }
 
 void CodeGen::gen_fcmp() {
-    // TODO 处理各种浮点数比较的情况
-    throw not_implemented_error{__FUNCTION__};
+    // TODO: 处理各种浮点数比较的情况
+    std::string true_label = "." + context.func->get_name() + "_" + context.inst->get_name() + "true";
+    std::string finish_label = "." + context.func->get_name() + "_" + context.inst->get_name() + "finish";
+    load_to_freg(context.inst->get_operand(0), FReg::ft(0));
+    load_to_freg(context.inst->get_operand(1), FReg::ft(1));
+    switch (context.inst->get_instr_type()) {
+        case Instruction::fge:
+            append_inst("fcmp.sle.s",
+                        {"$fcc0", "$ft1", "$ft0"});
+            break;
+        case Instruction::fgt:
+            append_inst("fcmp.slt.s",
+                        {"$fcc0", "$ft1", "$ft0"});
+            break;
+        case Instruction::fle:
+            append_inst("fcmp.sle.s",
+                        {"$fcc0", "$ft0", "$ft1"});
+            break;
+        case Instruction::flt:
+            append_inst("fcmp.slt.s",
+                        {"$fcc0", "$t0", "$t1"});
+            break;
+        case Instruction::feq:
+            append_inst("fcmp.seq.s",
+                        {"$fcc0", "$t0", "$t1"});
+            break;
+        case Instruction::fne:
+            append_inst("fcmp.sne",
+                        {"$fcc0", "$t0", "$t1"});
+        default:
+            break;
+    }
+    append_inst("bcnez",
+                {"$fcc0", true_label});
+    append_inst("addi.d $t0, $zero, 0");
+    append_inst("b " + finish_label);
+
+    append_inst(true_label, ASMInstruction::Label);
+    append_inst("addi.d $t0, $zero, 1");
+
+    append_inst(finish_label, ASMInstruction::Label);
+    store_from_greg(context.inst, Reg::t(0));
+
+    // throw not_implemented_error{__FUNCTION__};
 }
 
 void CodeGen::gen_zext() {
-    // TODO 将窄位宽的整数数据进行零扩展
-    throw not_implemented_error{__FUNCTION__};
+    // TODO: 将窄位宽的整数数据进行零扩展
+    load_to_greg(context.inst->get_operand(0), Reg::t(0));
+    store_from_greg(context.inst, Reg::t(0));
+    // throw not_implemented_error{__FUNCTION__};
 }
 
 void CodeGen::gen_call() {
-    // TODO 函数调用，注意我们只需要通过寄存器传递参数，即不需考虑栈上传参的情况
-    throw not_implemented_error{__FUNCTION__};
+    // TODO: 函数调用，注意我们只需要通过寄存器传递参数，即不需考虑栈上传参的情况
+    for(unsigned int i = 1; i < context.inst->get_num_operand(); i++)
+    {
+        auto *type = context.inst->get_operand(i)->get_type();
+        if(type->is_float_type())
+        {
+            load_to_freg(context.inst->get_operand(i), FReg::fa(i - 1));
+        }   
+        else
+        {
+            load_to_greg(context.inst->get_operand(i), Reg::a(i - 1));
+        }
+    }
+    append_inst("bl " + context.inst->get_operand(0)->get_name());
+    if(context.inst->get_type()->is_void_type())
+        return;
+    if(context.inst->get_type()->is_float_type())
+    {
+        store_from_freg(context.inst, FReg::fa(0));
+    }
+    else
+    {
+        store_from_greg(context.inst, Reg::a(0));
+    }
+    // throw not_implemented_error{__FUNCTION__};
 }
 
 void CodeGen::gen_gep() {
-    // TODO 计算内存地址
-    throw not_implemented_error{__FUNCTION__};
+    // TODO: 计算内存地址
+    load_to_greg(context.inst->get_operand(0), Reg::t(0));
+    auto *type = context.inst->get_operand(0)->get_type()->get_pointer_element_type();
+    append_inst(std::to_string(context.inst->get_num_operand()), ASMInstruction::Comment);
+    if(type->is_array_type()) {
+        int size = type->get_array_element_type()->get_size();
+        load_large_int64(size, Reg::t(1));
+        append_inst("1_" + std::to_string(size), ASMInstruction::Comment);
+        load_to_greg(context.inst->get_operand(2), Reg::t(2));
+    }
+    else {
+        int size = type->get_size();
+        load_large_int64(size, Reg::t(1));
+        append_inst("2_" + std::to_string(size), ASMInstruction::Comment);
+        load_to_greg(context.inst->get_operand(1), Reg::t(2));
+    }
+    append_inst(MUL DOUBLE,
+                {"$t1", "$t1", "$t2"});
+    append_inst(ADD DOUBLE,
+                {"$t0", "$t0", "$t1"});
+    store_from_greg(context.inst, Reg::t(0));
+    // throw not_implemented_error{__FUNCTION__};
 }
 
 void CodeGen::gen_sitofp() {
-    // TODO 整数转向浮点数
-    throw not_implemented_error{__FUNCTION__};
+    // TODO: 整数转向浮点数
+    auto *inst = static_cast<SiToFpInst*>(context.inst);
+    LOG(DEBUG) << "si2fp";
+    load_to_greg(inst->get_operand(0), Reg::t(0));
+    append_inst(GR2FR WORD,
+                {"$ft0", "$t0"});
+    append_inst("ffint.s.w", 
+                {"$ft0", "$ft0"});
+    store_from_freg(context.inst, FReg::ft(0));
+    // throw not_implemented_error{__FUNCTION__};
 }
 
 void CodeGen::gen_fptosi() {
-    // TODO 浮点数转向整数，注意向下取整(round to zero)
-    throw not_implemented_error{__FUNCTION__};
+    // TODO: 浮点数转向整数，注意向下取整(round to zero)
+    auto *inst = static_cast<FpToSiInst*>(context.inst);
+    LOG(DEBUG) << "fp2si";
+    load_to_freg(inst->get_operand(0), FReg::ft(0));
+    append_inst("ftintrz.w.s",
+                {"$ft0", "$ft0"});
+    append_inst(FR2GR SINGLE, 
+                {"$t0", "$ft0"});
+    store_from_greg(context.inst, Reg::t(0));
+    // throw not_implemented_error{__FUNCTION__};
 }
 
 void CodeGen::run() {

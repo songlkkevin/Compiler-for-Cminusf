@@ -8,10 +8,10 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/cminusfc",
+            "program": "/home/tinykevin/2023ustc-jianmu-compiler/build/cminusfc",
             "args": [
-                "-emit-llvm",
-                "${workspaceFolder}/tests/2-ir-gen/autogen/testcases/lv2/funcall_int_array.cminus"
+                "-S",
+                "/home/tinykevin/2023ustc-jianmu-compiler/tests/3-codegen/autogen/testcases/12-global.cminus"
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
@@ -30,19 +30,7 @@
                     "ignoreFailures": true
                 }
             ]
-        },
-
-
-
-
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "Launch Program",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${file}"
         }
+
     ]
 }

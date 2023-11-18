@@ -1,2 +1,5 @@
 build/
 /test
+/beforelab3
+output/
+log*

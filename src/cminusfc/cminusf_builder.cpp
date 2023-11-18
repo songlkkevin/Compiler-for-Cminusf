@@ -1,14 +1,4 @@
 #include "cminusf_builder.hpp"
-#include "BasicBlock.hpp"
-#include "Constant.hpp"
-#include "Function.hpp"
-#include "GlobalVariable.hpp"
-#include "Type.hpp"
-#include "Value.hpp"
-#include "ast.hpp"
-#include <tuple>
-#include <type_traits>
-#include <vector>
 
 #define CONST_FP(num) ConstantFP::get((float)num, module.get())
 #define CONST_INT(num) ConstantInt::get(num, module.get())
@@ -122,7 +112,7 @@ Value* CminusfBuilder::visit(ASTFunDeclaration &node) {
     for (auto &arg : func->get_args()) {
         args.push_back(&arg);
     }
-    for (int i = 0; i < node.params.size(); ++i) {
+    for (size_t i = 0; i < node.params.size(); ++i) {
         // TODO: You need to deal with params and store them in the scope. DONE
         if(node.params[i]->type == TYPE_VOID) continue;
         if(node.params[i]->type == TYPE_INT)
@@ -233,7 +223,8 @@ Value* CminusfBuilder::visit(ASTSelectionStmt &node) {
         builder->create_cond_br(cond, true_bb, next_bb);
         builder->set_insert_point(true_bb);
         node.if_statement->accept(*this);
-        builder->create_br(next_bb);
+        if(builder->get_insert_block()->is_terminated() == false)
+            builder->create_br(next_bb);
         builder->set_insert_point(next_bb);
     }
     return nullptr;
@@ -465,7 +456,7 @@ Value* CminusfBuilder::visit(ASTCall &node) {
     auto CallFunc = static_cast<Function *>(scope.find(node.id));
     std::vector<Value *> args;
     auto func_type = static_cast<FunctionType *>(CallFunc->get_type());
-    for (int i = 0; i < node.args.size(); i++)
+    for (size_t i = 0; i < node.args.size(); i++)
     {
         auto ArgValue = node.args[i]->accept(*this);
         if(func_type->get_param_type(i) != ArgValue->get_type() && !func_type->get_param_type(i)->is_pointer_type())
