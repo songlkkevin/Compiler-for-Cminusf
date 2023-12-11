@@ -3,3 +3,6 @@ build/
 /beforelab3
 output/
 log*
+/.vscode
+*.s
+*.ll

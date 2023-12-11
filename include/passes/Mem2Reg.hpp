@@ -6,12 +6,13 @@
 
 #include <map>
 #include <memory>
+#include <stack>
 
 class Mem2Reg : public Pass {
   private:
     Function *func_;
     std::unique_ptr<Dominators> dominators_;
-
+    std::map<Value*, std::stack<Value*>> stack_;
     // TODO 添加需要的变量
 
   public:

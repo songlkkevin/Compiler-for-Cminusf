@@ -8,10 +8,11 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/home/tinykevin/2023ustc-jianmu-compiler/build/cminusfc",
+            "program": "/home/ubuntu/2023ustc-jianmu-compiler/build/cminusfc",
             "args": [
                 "-S",
-                "/home/tinykevin/2023ustc-jianmu-compiler/tests/3-codegen/autogen/testcases/12-global.cminus"
+                "-mem2reg",
+                "/home/ubuntu/2023ustc-jianmu-compiler/tests/4-mem2reg/functional-cases/5-while.cminus"
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
