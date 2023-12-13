@@ -1,7 +1,10 @@
 #include "CodeGen.hpp"
 
+#include "ASMInstruction.hpp"
 #include "CodeGenUtil.hpp"
+#include "Instruction.hpp"
 #include "Register.hpp"
+#include "Value.hpp"
 #include "logging.hpp"
 #include <string>
 // #include "syntax_analyzer.h"
@@ -233,6 +236,28 @@ void CodeGen::gen_ret() {
     // throw not_implemented_error{__FUNCTION__};
 }
 
+void CodeGen::solve_phi(BasicBlock *now_bb, BasicBlock *succ_bb) {
+    for (auto &inst : succ_bb->get_instructions()) {
+        if (!inst.is_phi()) continue;
+        auto phi_inst = static_cast<PhiInst*>(&inst);
+        for (unsigned i = 0; i < phi_inst->get_num_operand() / 2; i++) {
+            if (phi_inst->get_operand(2 * i + 1) == now_bb) {
+                if(phi_inst->get_type()->is_float_type()) {
+                    append_inst("mv %" + phi_inst->get_operand(2 * i)->get_name()+ " to %" + phi_inst->get_name(), ASMInstruction::Comment);
+                    load_to_freg(phi_inst->get_operand(2 * i), FReg::ft(0));
+                    store_from_freg(phi_inst, FReg::ft(0));
+                }
+                else {
+                    append_inst("mv %" + phi_inst->get_operand(2 * i)->get_name() + " to %" + phi_inst->get_name(), ASMInstruction::Comment);
+                    load_to_greg(phi_inst->get_operand(2 * i), Reg::t(0));
+                    store_from_greg(phi_inst, Reg::t(0));
+                } 
+                break;
+            }
+        }
+    }
+}
+
 void CodeGen::gen_br() {
     auto *branchInst = static_cast<BranchInst *>(context.inst);
     if (branchInst->is_cond_br()) {
@@ -240,6 +265,8 @@ void CodeGen::gen_br() {
         load_to_greg(branchInst->get_operand(0), Reg::t(0));
         auto *truebranchbb = static_cast<BasicBlock *>(branchInst->get_operand(1));
         auto *falsebranchbb = static_cast<BasicBlock *>(branchInst->get_operand(2));
+        solve_phi(branchInst->get_parent(), truebranchbb);
+        solve_phi(branchInst->get_parent(), falsebranchbb);
         append_inst("bne", 
                     {"$t0", "$zero", label_name(truebranchbb)});            
         append_inst("beq", 
@@ -247,6 +274,7 @@ void CodeGen::gen_br() {
         // throw not_implemented_error{__FUNCTION__};
     } else {
         auto *branchbb = static_cast<BasicBlock *>(branchInst->get_operand(0));
+        solve_phi(branchInst->get_parent(), branchbb);
         append_inst("b " + label_name(branchbb));
     }
 }
@@ -656,7 +684,7 @@ void CodeGen::run() {
                         gen_fcmp();
                         break;
                     case Instruction::phi:
-                        throw not_implemented_error{"need to handle phi!"};
+                        // throw not_implemented_error{"need to handle phi!"};
                         break;
                     case Instruction::call:
                         gen_call();

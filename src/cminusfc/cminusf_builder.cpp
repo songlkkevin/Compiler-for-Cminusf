@@ -1,4 +1,5 @@
 #include "cminusf_builder.hpp"
+#include <string>
 
 #define CONST_FP(num) ConstantFP::get((float)num, module.get())
 #define CONST_INT(num) ConstantInt::get(num, module.get())
@@ -10,6 +11,7 @@ Type *INT32_T;
 Type *INT32PTR_T;
 Type *FLOAT_T;
 Type *FLOATPTR_T;
+int cnt = 0;
 
 /*
  * use CMinusfBuilder::Scope to construct scopes
@@ -198,15 +200,15 @@ Value* CminusfBuilder::visit(ASTSelectionStmt &node) {
     // Add some code here.
     auto expr = node.expression->accept(*this);
     Value *cond;
-    auto next_bb = BasicBlock::create(module.get(), "", context.func);
-    auto true_bb = BasicBlock::create(module.get(), "", context.func);
+    auto next_bb = BasicBlock::create(module.get(), std::to_string(cnt++) + "", context.func);
+    auto true_bb = BasicBlock::create(module.get(), std::to_string(cnt++) + "", context.func);
     if(expr->get_type()->is_integer_type())
         cond = builder->create_icmp_ne(expr, CONST_INT(0));
     else
         cond = builder->create_fcmp_ne(expr, CONST_FP(0.0));
     if(node.else_statement != nullptr)
     {
-        auto false_bb = BasicBlock::create(module.get(), "", context.func);
+        auto false_bb = BasicBlock::create(module.get(), std::to_string(cnt++) + "", context.func);
         builder->create_cond_br(cond, true_bb, false_bb);
         builder->set_insert_point(true_bb);
         node.if_statement->accept(*this);
@@ -233,9 +235,9 @@ Value* CminusfBuilder::visit(ASTSelectionStmt &node) {
 Value* CminusfBuilder::visit(ASTIterationStmt &node) {
     // TODO: This function is empty now.
     // Add some code here.
-    auto cond_bb = BasicBlock::create(module.get(), "", context.func);
-    auto body_bb = BasicBlock::create(module.get(), "", context.func);
-    auto next_bb = BasicBlock::create(module.get(), "", context.func);
+    auto cond_bb = BasicBlock::create(module.get(), std::to_string(cnt++) + "", context.func);
+    auto body_bb = BasicBlock::create(module.get(), std::to_string(cnt++) + "", context.func);
+    auto next_bb = BasicBlock::create(module.get(), std::to_string(cnt++) + "", context.func);
     Value* cond;
     builder->create_br(cond_bb);
     builder->set_insert_point(cond_bb);
@@ -277,8 +279,8 @@ Value* CminusfBuilder::visit(ASTVar &node) {
     else
     {
         auto expr = node.expression->accept(*this);
-        auto is_neg = BasicBlock::create(module.get(), "", context.func);
-        auto not_neg = BasicBlock::create(module.get(), "", context.func);
+        auto is_neg = BasicBlock::create(module.get(), std::to_string(cnt++) + "", context.func);
+        auto not_neg = BasicBlock::create(module.get(), std::to_string(cnt++) + "", context.func);
         if(expr->get_type()->is_float_type())
             expr = builder->create_fptosi(expr, INT32_T);
         auto cmp = builder->create_icmp_ge(expr, CONST_INT(0));

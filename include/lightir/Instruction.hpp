@@ -2,6 +2,7 @@
 
 #include "Type.hpp"
 #include "User.hpp"
+#include "Value.hpp"
 
 #include <cstdint>
 #include <llvm/ADT/ilist_node.h>
@@ -345,6 +346,7 @@ class PhiInst : public BaseInst<PhiInst> {
   private:
     PhiInst(Type *ty, std::vector<Value *> vals,
             std::vector<BasicBlock *> val_bbs, BasicBlock *bb);
+    Value *l_val_;
 
   public:
     static PhiInst *create_phi(Type *ty, BasicBlock *bb,
@@ -355,5 +357,7 @@ class PhiInst : public BaseInst<PhiInst> {
         this->add_operand(val);
         this->add_operand(pre_bb);
     }
+    Value * get_lval() {return l_val_;}
+    void set_lval(Value *lval) {l_val_ = lval;}
     virtual std::string print() override;
 };

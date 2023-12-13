@@ -13,6 +13,7 @@ class Mem2Reg : public Pass {
     Function *func_;
     std::unique_ptr<Dominators> dominators_;
     std::map<Value*, std::stack<Value*>> stack_;
+    std::set<Value*> delete_list;
     // TODO 添加需要的变量
 
   public:

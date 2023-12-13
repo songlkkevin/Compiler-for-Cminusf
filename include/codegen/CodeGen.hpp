@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ASMInstruction.hpp"
+#include "BasicBlock.hpp"
 #include "Module.hpp"
 #include "Register.hpp"
 #include <unordered_map>
@@ -48,6 +49,7 @@ class CodeGen {
 
     void gen_prologue();
     void gen_ret();
+    void solve_phi(BasicBlock* now_bb, BasicBlock* succ_bb);
     void gen_br();
     void gen_binary();
     void gen_float_binary();

@@ -26,6 +26,8 @@ void Dominators::run() {
         create_postorder(f);
         create_idom(f);
         create_dominance_frontier(f);
+        // print_idom(f);
+        // print_dominance_frontier(f);
         create_dom_tree_succ(f);
     }
 }
@@ -52,12 +54,10 @@ BasicBlock* Dominators::intersect(BasicBlock* bb1, BasicBlock* bb2) {
     if(bb2 == nullptr) return bb1;
     while(postorder_[bb1] != postorder_[bb2])
     {
-        if(postorder_[bb1] < postorder_[bb2])
+        while(postorder_[bb1] < postorder_[bb2])
             bb1 = idom_[bb1];
-        else
+        while(postorder_[bb1] > postorder_[bb2])
             bb2 = idom_[bb2];
-        if(bb1 == nullptr) return bb2;
-        if(bb2 == nullptr) return bb1;
     }
     return bb1;
 }
@@ -74,12 +74,15 @@ void Dominators::create_idom(Function *f) {
             if(now_bb == f->get_entry_block()) 
                 continue;
             for(auto pre_bb : now_bb->get_pre_basic_blocks()) 
-                new_idom = intersect(new_idom, pre_bb);
+                if(idom_[pre_bb] != nullptr)
+                    new_idom = intersect(new_idom, pre_bb);
             if(idom_[now_bb] != new_idom)
             {
                 idom_[now_bb] = new_idom;
                 changed = true;
             }
+            // std::cout << now_bb->get_name();
+            // print_idom(f);
         }
     }
 }
@@ -106,5 +109,71 @@ void Dominators::create_dom_tree_succ(Function *f) {
         if(get_idom(bb) != bb) {
             dom_tree_succ_blocks_[get_idom(bb)].insert(bb);
         }
+    }
+}
+
+
+void Dominators::print_idom(Function *f)
+{
+    int counter = 0;
+    std::map<BasicBlock *, std::string> bb_id;
+    for (auto &bb1 : f->get_basic_blocks()) {
+        auto bb = &bb1;
+        if (bb->get_name().empty())
+            bb_id[bb] = "bb" + std::to_string(counter);
+        else 
+            bb_id[bb] = bb->get_name();
+        counter++;
+    }
+    printf("Immediate dominance of function %s:\n", f->get_name().c_str());
+    for (auto &bb1 : f->get_basic_blocks()) {
+        auto bb= &bb1;
+        std::string output;
+        output = bb_id[bb] + ": ";
+        if (get_idom(bb)) {
+            output += bb_id[get_idom(bb)];
+        }
+        else {
+            output += "null";
+        }
+        output += " :";
+        output += std::to_string(postorder_[bb]);
+        printf("%s\n", output.c_str());
+    }
+}
+
+void Dominators::print_dominance_frontier(Function *f)
+{
+    int counter = 0;
+    std::map<BasicBlock *, std::string> bb_id;
+    for (auto &bb1 : f->get_basic_blocks()) {
+        auto bb = &bb1;
+        if (bb->get_name().empty())
+            bb_id[bb] = "bb" + std::to_string(counter);
+        else 
+            bb_id[bb] = bb->get_name();
+        counter++;
+    }
+    printf("Dominance Frontier of function %s:\n", f->get_name().c_str());
+    for (auto &bb1 : f->get_basic_blocks()) {
+        std::string output;
+        auto bb = &bb1;
+        output = bb_id[bb] + ": ";
+        if (get_dominance_frontier(bb).empty()) {
+            output += "null";
+        }
+        else {
+            bool first = true;
+            for (auto df : get_dominance_frontier(bb)) {
+                if (first) {
+                    first = false;
+                }
+                else {
+                    output += ", ";
+                }
+                output += bb_id[df];
+            }
+        }
+        printf("%s\n", output.c_str());
     }
 }

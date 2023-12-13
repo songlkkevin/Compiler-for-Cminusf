@@ -71,11 +71,13 @@ for case in $testcases; do
 	exe_file=$output_dir/$case_base_name
 	out_file=$output_dir/$case_base_name.out
 	ll_file=$output_dir/$case_base_name.ll
+	origin_ll_file=$output_dir/$case_base_name"_origin".ll
 
 	echo -n "$case_base_name..."
 	# if debug mode on, generate .ll also
 	if [ $debug_mode = true ]; then
 		bash -c "cminusfc -mem2reg -emit-llvm $case -o $ll_file" >>$LOG 2>&1
+		# bash -c "cminusfc -emit-llvm $case -o $origin_ll_file" >> /dev/null
 	fi
 	# cminusfc compile to .s
 	bash -c "cminusfc -S -mem2reg $case -o $asm_file" >>$LOG 2>&1

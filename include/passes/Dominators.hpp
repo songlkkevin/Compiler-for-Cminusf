@@ -32,12 +32,13 @@ class Dominators : public Pass {
     void dfs(BasicBlock*);
     BasicBlock* intersect(BasicBlock* b1, BasicBlock* b2);
     void print_idom(Function *f);
+    void print_dominance_frontier(Function *f);
 
     // TODO 补充需要的函数
 
-    std::map<BasicBlock *, BasicBlock *> idom_{};  // 直接支配
+    std::map<BasicBlock *, BasicBlock *> idom_;  // 直接支配
     std::map<BasicBlock *, BBSet> dom_frontier_{}; // 支配边界集合
     std::map<BasicBlock *, BBSet> dom_tree_succ_blocks_{}; // 支配树中的后继节点
-    std::vector<BasicBlock*> postorder_vector_{};
-    std::map<BasicBlock*, int> postorder_{};
+    std::vector<BasicBlock*> postorder_vector_;
+    std::map<BasicBlock*, int> postorder_;
 };
